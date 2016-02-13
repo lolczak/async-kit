@@ -49,6 +49,10 @@ class AsyncActionFunctions[E] {
 
   def raiseError[A](e: E): AsyncAction[E, A] = ME.raiseError(e)
 
+  implicit def toMt[A](value: =>A) = new {
+    def asAsyncAction: AsyncAction[E, A] = return_(value)
+  }
+
 }
 
 trait ToAsyncActionOps {

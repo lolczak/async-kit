@@ -5,6 +5,7 @@ import java.util.concurrent.{ScheduledExecutorService, ExecutorService}
 import scala.concurrent.duration.Duration
 import scalaz.concurrent.{Strategy, Task}
 import scalaz._
+import scala.language.implicitConversions
 
 object AsyncOptAction extends ToAsyncOptActionOps {
 
@@ -51,6 +52,10 @@ class AsyncOptActionFunctions[E] {
 
   def raiseError[A](e: E): AsyncOptAction[E, A] = ME.raiseError(e)
 
+  implicit def toMt[A](value: =>A) = new {
+    def asAsyncOptAction: AsyncOptAction[E, A] = returnSome(value)
+  }
+
 }
 
 trait ToAsyncOptActionOps {
@@ -87,7 +92,5 @@ trait ToAsyncOptActionOps {
     def executeAsync(register: (E \/ Option[A]) => Unit): Unit = AsyncOptAction.runAsync(action)(register)
 
   }
-
-//  implicit def toMt[A, E](a: =>A): AsyncOptAction[E, A] = AsyncOptAction.return_(a)
 
 }
