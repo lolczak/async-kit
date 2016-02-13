@@ -1,11 +1,11 @@
 package org.lolczak.async
 
-import java.util.concurrent.{ScheduledExecutorService, ExecutorService}
+import java.util.concurrent.{ExecutorService, ScheduledExecutorService}
 
 import scala.concurrent.duration.Duration
-import scalaz.concurrent.{Strategy, Task}
-import scalaz._
 import scala.language.implicitConversions
+import scalaz._
+import scalaz.concurrent.{Strategy, Task}
 
 object AsyncOptAction extends ToAsyncOptActionOps {
 
@@ -15,7 +15,7 @@ object AsyncOptAction extends ToAsyncOptActionOps {
 
   def runAsync[Error, Success](action: AsyncOptAction[Error, Success])(register: (Error \/ Option[Success]) => Unit): Unit =
     action.run.run.unsafePerformAsync {
-      case -\/(th)     => throw th
+      case -\/(th) => throw th
       case \/-(result) => register(result)
     }
 }
@@ -24,17 +24,17 @@ class AsyncOptActionFunctions[E] {
 
   val MT = implicitly[MonadTrans[OptionT]]
 
-  val ME = OptionT.optionTMonadError[EitherT[Task, E, ?], E]//implicitly[MonadError[OptionT[EitherT[Task, E, ?], ?], E]]
+  val ME = OptionT.optionTMonadError[EitherT[Task, E, ?], E] //implicitly[MonadError[OptionT[EitherT[Task, E, ?], ?], E]]
 
   def async[A](register: ((Throwable \/ A) => Unit) => Unit): AsyncOptAction[Throwable, A] = liftE(Task.async(register).attempt)
 
   def asyncOpt[A](register: ((Throwable \/ Option[A]) => Unit) => Unit): AsyncOptAction[Throwable, A] =
     OptionT[EitherT[Task, Throwable, ?], A](EitherT.eitherT(Task.async(register).attempt))
 
-  def fork[A](task: =>Option[A])(implicit pool: ExecutorService = Strategy.DefaultExecutorService): AsyncOptAction[Throwable, A] =
+  def fork[A](task: => Option[A])(implicit pool: ExecutorService = Strategy.DefaultExecutorService): AsyncOptAction[Throwable, A] =
     OptionT[EitherT[Task, Throwable, ?], A](EitherT.eitherT(Task { task } attempt))
 
-  def schedule[A](task: =>Option[A])(implicit pool: ScheduledExecutorService = Strategy.DefaultTimeoutScheduler) = new {
+  def schedule[A](task: => Option[A])(implicit pool: ScheduledExecutorService = Strategy.DefaultTimeoutScheduler) = new {
     def after(delay: Duration): AsyncOptAction[Throwable, A] = OptionT[EitherT[Task, Throwable, ?], A](EitherT.eitherT(Task.schedule(task, delay).attempt))
   }
 
@@ -42,17 +42,17 @@ class AsyncOptActionFunctions[E] {
 
   def liftE[B, A](task: Task[B \/ A]): AsyncOptAction[B, A] = MT.liftM[EitherT[Task, B, ?], A](EitherT.eitherT(task))
 
-  def return_[A](value: =>A): AsyncOptAction[E, A] = returnSome[A](value) //lift(Task.delay(value))
+  def return_[A](value: => A): AsyncOptAction[E, A] = returnSome[A](value) //lift(Task.delay(value))
 
-  def returnSome[A](value: =>A): AsyncOptAction[E, A] = OptionT.some[EitherT[Task, E, ?], A](value)
+  def returnSome[A](value: => A): AsyncOptAction[E, A] = OptionT.some[EitherT[Task, E, ?], A](value)
 
   def returnNone[A]: AsyncOptAction[E, A] = OptionT.none[EitherT[Task, E, ?], A]
 
-  def returnFromTryCatch[A](value: =>A): AsyncOptAction[Throwable, A] = liftE(Task.delay(value).attempt)
+  def returnFromTryCatch[A](value: => A): AsyncOptAction[Throwable, A] = liftE(Task.delay(value).attempt)
 
   def raiseError[A](e: E): AsyncOptAction[E, A] = ME.raiseError(e)
 
-  implicit def toMt[A](value: =>A) = new {
+  implicit def toMt[A](value: => A) = new {
     def asAsyncOptAction: AsyncOptAction[E, A] = returnSome(value)
   }
 
@@ -62,14 +62,13 @@ trait ToAsyncOptActionOps {
 
   implicit class ErrorHandler[E1, A](action: AsyncOptAction[E1, A]) {
 
-    val ME = OptionT.optionTMonadError[EitherT[Task, E1, ?], E1]
-    import ME.monadErrorSyntax._
+    val fun = new AsyncOptActionFunctions[E1]
+    import fun.ME.monadErrorSyntax._
+    import fun._
 
     def mapError[E2](handler: E1 => E2): AsyncOptAction[E2, A] = OptionT[EitherT[Task, E2, ?], A](action.run leftMap handler)
 
     def recover[B >: A](pf: PartialFunction[E1, B]): AsyncOptAction[E1, B] = {
-      val fun = new AsyncOptActionFunctions[E1]
-      import fun._
       action.asInstanceOf[AsyncOptAction[E1, B]] handleError { err =>
         if (pf.isDefinedAt(err)) return_(pf(err))
         else raiseError(err)

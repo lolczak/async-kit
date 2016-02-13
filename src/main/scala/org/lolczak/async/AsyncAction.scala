@@ -28,10 +28,10 @@ class AsyncActionFunctions[E] {
 
   def async[A](register: ((Throwable \/ A) => Unit) => Unit): AsyncAction[Throwable, A] = liftE(Task.async(register).attempt)
 
-  def fork[A](task: =>A)(implicit pool: ExecutorService = Strategy.DefaultExecutorService): AsyncAction[Throwable, A] =
+  def fork[A](task: => A)(implicit pool: ExecutorService = Strategy.DefaultExecutorService): AsyncAction[Throwable, A] =
     lift(Task { task })
 
-  def schedule[A](task: =>A)(implicit pool: ScheduledExecutorService = Strategy.DefaultTimeoutScheduler) = new {
+  def schedule[A](task: => A)(implicit pool: ScheduledExecutorService = Strategy.DefaultTimeoutScheduler) = new {
     def after(delay: Duration): AsyncAction[Throwable, A] = lift(Task.schedule(task, delay))
   }
 
@@ -49,7 +49,7 @@ class AsyncActionFunctions[E] {
 
   def raiseError[A](e: E): AsyncAction[E, A] = ME.raiseError(e)
 
-  implicit def toMt[A](value: =>A) = new {
+  implicit def toMt[A](value: => A) = new {
     def asAsyncAction: AsyncAction[E, A] = return_(value)
   }
 
@@ -58,8 +58,10 @@ class AsyncActionFunctions[E] {
 trait ToAsyncActionOps {
 
   implicit class ErrorHandler[E1, A](action: AsyncAction[E1, A]) {
-    val ME = implicitly[MonadError[AsyncAction[E1, ?], E1]]
-    import ME.monadErrorSyntax._
+
+    val fun = new AsyncActionFunctions[E1]
+    import fun.ME.monadErrorSyntax._
+    import fun._
 
     def mapError[E2](handler: E1 => E2): AsyncAction[E2, A] = action leftMap handler
 
@@ -70,8 +72,6 @@ trait ToAsyncActionOps {
     }
 
     def recover[B >: A](pf: PartialFunction[E1, B]): AsyncAction[E1, B] = {
-      val fun = new AsyncActionFunctions[E1]
-      import fun._
       action.asInstanceOf[AsyncAction[E1, B]] handleError { err =>
         if (pf.isDefinedAt(err)) return_(pf(err))
         else raiseError(err)
