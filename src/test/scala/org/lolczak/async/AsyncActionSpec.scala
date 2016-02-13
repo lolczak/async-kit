@@ -25,7 +25,7 @@ class AsyncActionSpec extends FlatSpec with Matchers {
 
   it should "recover errors" in {
     //when
-    val result = raiseError[String](Failure("errr")) recoverWith { case th => return_("OK") } executeSync()
+    val result = raiseError(Failure("err")) recoverWith { case th => return_("OK") } executeSync()
     //then
     result shouldBe \/-("OK")
   }

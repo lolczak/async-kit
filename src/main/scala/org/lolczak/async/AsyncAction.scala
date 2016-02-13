@@ -59,23 +59,23 @@ trait ToAsyncActionOps {
 
     def mapError[E2](handler: E1 => E2): AsyncAction[E2, A] = action leftMap handler
 
-    def fallbackTo(failover: AsyncAction[E1, A]): AsyncAction[E1, A] = {
+    def fallbackTo[B >: A](failover: AsyncAction[E1, B]): AsyncAction[E1, B] = {
       action recoverWith {
         case firstFailure => failover recoverWith { case secondFailure => ME.raiseError(firstFailure) }
       }
     }
 
-    def recover(pf: PartialFunction[E1, A]): AsyncAction[E1, A] = {
+    def recover[B >: A](pf: PartialFunction[E1, B]): AsyncAction[E1, B] = {
       val fun = new AsyncActionFunctions[E1]
       import fun._
-      action handleError { err =>
+      action.asInstanceOf[AsyncAction[E1, B]] handleError { err =>
         if (pf.isDefinedAt(err)) return_(pf(err))
         else raiseError(err)
       }
     }
 
-    def recoverWith(pf: PartialFunction[E1, AsyncAction[E1, A]]): AsyncAction[E1, A] = {
-      action handleError { err =>
+    def recoverWith[B >: A](pf: PartialFunction[E1, AsyncAction[E1, B]]): AsyncAction[E1, B] = {
+      action.asInstanceOf[AsyncAction[E1, B]] handleError { err =>
         if (pf.isDefinedAt(err)) pf(err)
         else ME.raiseError(err)
       }
