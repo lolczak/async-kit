@@ -10,6 +10,8 @@ resolvers += "Tim Tennant's repo" at "http://dl.bintray.com/timt/repo/"
 
 resolvers += "bintray/non" at "http://dl.bintray.com/non/maven"
 
+addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.7.1")
+
 val akka = Seq(
   "com.typesafe.akka" %% "akka-actor" % "2.3.8"
 )
