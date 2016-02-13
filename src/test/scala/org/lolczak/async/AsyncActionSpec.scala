@@ -33,4 +33,3 @@ class AsyncActionSpec extends FlatSpec with Matchers {
 
 }
 
-case class Failure(msg: String)

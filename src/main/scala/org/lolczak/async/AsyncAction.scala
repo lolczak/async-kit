@@ -1,6 +1,6 @@
 package org.lolczak.async
 
-import java.util.concurrent.{ScheduledExecutorService, ExecutorService}
+import java.util.concurrent.{ExecutorService, ScheduledExecutorService}
 
 import scala.concurrent.duration.Duration
 import scalaz._
