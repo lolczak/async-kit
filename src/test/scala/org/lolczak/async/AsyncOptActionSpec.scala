@@ -65,4 +65,15 @@ class AsyncOptActionSpec extends FlatSpec with Matchers {
   }
 
 
+  it should "find upper bound for error and success type" in {
+    val action: AsyncOptAction[Failure, Unit] = for {
+      res1 <- delay(1) mapError { case th => Failure(th.getMessage) }
+      res2 <- if (res1 == 1) returnSome(()).asAsyncOptAction[Failure]
+              else raiseError[Failure, Unit](Failure("err"))
+    } yield res2
+
+    action.executeSync() shouldBe \/-(Some())
+  }
+
+
 }

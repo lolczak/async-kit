@@ -51,5 +51,15 @@ class AsyncActionSpec extends FlatSpec with Matchers {
     action.executeSync() shouldBe \/-(2)
   }
 
+  it should "find upper bound for error and success type" in {
+    val action: AsyncAction[Failure, Unit] = for {
+      res1 <- delay(1) mapError { case th => Failure(th.getMessage) }
+      res2 <- if (res1 == 1) return_()
+              else raiseError(Failure("err"))
+    } yield res2
+
+    action.executeSync() shouldBe \/-()
+  }
+
 }
 

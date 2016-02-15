@@ -55,7 +55,7 @@ trait AsyncOptActionFunctions {
 
 trait ToAsyncOptActionOps {
 
-  implicit def toUpFail[E1, E2 >: E1, A](action: AsyncOptAction[E1, A]): AsyncOptAction[E2, A] = action.asInstanceOf[AsyncOptAction[E2, A]]
+  implicit def toUpperBound[E1, E2 >: E1, A1, A2 >: A1](action: AsyncOptAction[E1, A1]): AsyncOptAction[E2, A2] = action.asInstanceOf[AsyncOptAction[E2, A2]]
 
   implicit def toMt[A](value: => A) = new {
     def asAsyncOptAction[E]: AsyncOptAction[E, A] = AsyncOptAction.returnSome(value)
