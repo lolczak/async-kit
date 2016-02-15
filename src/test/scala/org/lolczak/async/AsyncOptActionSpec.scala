@@ -1,9 +1,9 @@
 package org.lolczak.async
 
-import org.scalatest.{Matchers, FlatSpec}
-import AsyncOptAction._
-import scalaz.concurrent.Task
-import scalaz.{EitherT, OptionT, -\/, \/-}
+import org.lolczak.async.AsyncOptAction._
+import org.scalatest.{FlatSpec, Matchers}
+
+import scalaz.{-\/, \/-}
 
 class AsyncOptActionSpec extends FlatSpec with Matchers {
 
@@ -14,7 +14,7 @@ class AsyncOptActionSpec extends FlatSpec with Matchers {
     //when
     val \/-(result) = fork { Some(Thread.currentThread().getId) } executeSync()
     //then
-    result shouldNot be (Some(Thread.currentThread().getId))
+    result shouldNot be(Some(Thread.currentThread().getId))
   }
 
   it should "map errors" in {
