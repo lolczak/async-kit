@@ -28,6 +28,8 @@ class AsyncActionFunctions[E] {
 
   def async[A](register: ((Throwable \/ A) => Unit) => Unit): AsyncAction[Throwable, A] = liftE(Task.async(register).attempt)
 
+  def delay[A](a: => A): AsyncAction[Throwable, A] = lift(Task.delay(a))
+
   def fork[A](task: => A)(implicit pool: ExecutorService = Strategy.DefaultExecutorService): AsyncAction[Throwable, A] =
     lift(Task { task })
 

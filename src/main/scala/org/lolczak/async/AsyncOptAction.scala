@@ -31,6 +31,8 @@ class AsyncOptActionFunctions[E] {
   def asyncOpt[A](register: ((Throwable \/ Option[A]) => Unit) => Unit): AsyncOptAction[Throwable, A] =
     OptionT[EitherT[Task, Throwable, ?], A](EitherT.eitherT(Task.async(register).attempt))
 
+  def delay[A](a: => A): AsyncOptAction[Throwable, A] = lift(Task.delay(a))
+
   def fork[A](task: => Option[A])(implicit pool: ExecutorService = Strategy.DefaultExecutorService): AsyncOptAction[Throwable, A] =
     OptionT[EitherT[Task, Throwable, ?], A](EitherT.eitherT(Task { task } attempt))
 
