@@ -3,28 +3,19 @@ package org.lolczak.async
 import java.util.concurrent.{ExecutorService, ScheduledExecutorService}
 
 import scala.concurrent.duration.Duration
+import scala.language.implicitConversions
 import scalaz._
 import scalaz.concurrent.{Strategy, Task}
 
-object AsyncAction extends ToAsyncActionOps with AsyncActionInstances {
-
-  def functionsFor[E] = new AsyncActionFunctions[E]
-
-  def runSync[Error, Success](action: AsyncAction[Error, Success]): Error \/ Success = action.run.unsafePerformSync
-
-  def runAsync[Error, Success](action: AsyncAction[Error, Success])(register: (Error \/ Success) => Unit): Unit =
-    action.run.unsafePerformAsync {
-      case -\/(th) => throw th
-      case \/-(result) => register(result)
-    }
+object AsyncAction extends AsyncActionFunctions with ToAsyncActionOps with AsyncActionInstances {
 
 }
 
-class AsyncActionFunctions[E] {
+trait AsyncActionFunctions {
 
-  val MT = implicitly[MonadTrans[EitherT[?[_], E, ?]]]
+//  val MT = implicitly[MonadTrans[EitherT[?[_], E, ?]]]
 
-  val ME = implicitly[MonadError[EitherT[Task, E, ?], E]]
+//  val ME = implicitly[MonadError[EitherT[Task, E, ?], E]]
 
   def async[A](register: ((Throwable \/ A) => Unit) => Unit): AsyncAction[Throwable, A] = liftE(Task.async(register).attempt)
 
@@ -41,29 +32,38 @@ class AsyncActionFunctions[E] {
 
   def liftE[B, A](task: Task[B \/ A]): AsyncAction[B, A] = EitherT.eitherT(task)
 
-  def return_[A](value: => A): AsyncAction[E, A] = MT.liftM(Task.delay(value))
+  def return_[A](value: => A)(implicit MT: MonadTrans[EitherT[?[_], Nothing, ?]]): AsyncAction[Nothing, A] = MT.liftM(Task.delay(value))
 
-  def returnOpt[A](value: => A): AsyncAction[E, Option[A]] = MT.liftM(Task.delay(Option(value)))
+  def returnOpt[E, A](value: => A)(implicit MT: MonadTrans[EitherT[?[_], Nothing, ?]]): AsyncAction[Nothing, Option[A]] = MT.liftM(Task.delay(Option(value)))
 
   def returnOptFromTryCatch[A](value: => A): AsyncAction[Throwable, Option[A]] = EitherT.eitherT(Task.delay(Option(value)).attempt)
 
   def returnFromTryCatch[A](value: => A): AsyncAction[Throwable, A] = EitherT.eitherT(Task.delay(value).attempt)
 
-  def raiseError[A](e: E): AsyncAction[E, A] = ME.raiseError(e)
+  def raiseError[E, A](e: E)(implicit ME: MonadError[EitherT[Task, E, ?], E]): AsyncAction[E, A] = ME.raiseError(e)
 
-  implicit def toMt[A](value: => A) = new {
-    def asAsyncAction: AsyncAction[E, A] = return_(value)
-  }
+  def runSync[Error, Success](action: AsyncAction[Error, Success]): Error \/ Success = action.run.unsafePerformSync
+
+  def runAsync[Error, Success](action: AsyncAction[Error, Success])(register: (Error \/ Success) => Unit): Unit =
+    action.run.unsafePerformAsync {
+      case -\/(th) => throw th
+      case \/-(result) => register(result)
+    }
 
 }
 
 trait ToAsyncActionOps {
 
+  implicit def toUpFail[E1, E2 >: E1, A](action: AsyncAction[E1, A]): AsyncAction[E2, A] = action.asInstanceOf[AsyncAction[E2, A]]
+
+  implicit def toMt[A](value: => A) = new {
+    def asAsyncAction[E]: AsyncAction[E, A] = AsyncAction.return_(value)
+  }
+
   implicit class ErrorHandler[E1, A](action: AsyncAction[E1, A]) {
 
-    val fun = new AsyncActionFunctions[E1]
-    import fun.ME.monadErrorSyntax._
-    import fun._
+    val ME = AsyncAction.asyncActionMonadError[E1]
+    import ME.monadErrorSyntax._
 
     def mapError[E2](handler: E1 => E2): AsyncAction[E2, A] = action leftMap handler
 
@@ -75,8 +75,8 @@ trait ToAsyncActionOps {
 
     def recover[B >: A](pf: PartialFunction[E1, B]): AsyncAction[E1, B] = {
       action.asInstanceOf[AsyncAction[E1, B]] handleError { err =>
-        if (pf.isDefinedAt(err)) return_(pf(err))
-        else raiseError(err)
+        if (pf.isDefinedAt(err)) AsyncAction.return_(pf(err))
+        else AsyncAction.raiseError(err)
       }
     }
 
