@@ -7,24 +7,11 @@ import scala.language.implicitConversions
 import scalaz._
 import scalaz.concurrent.{Strategy, Task}
 
-object AsyncOptAction extends ToAsyncOptActionOps {
+object AsyncOptAction extends AsyncOptActionFunctions with ToAsyncOptActionOps with AsyncOptActionInstances {
 
-  def functionsFor[E] = new AsyncOptActionFunctions[E]
-
-  def runSync[Error, Success](action: AsyncOptAction[Error, Success]): Error \/ Option[Success] = action.run.run.unsafePerformSync
-
-  def runAsync[Error, Success](action: AsyncOptAction[Error, Success])(register: (Error \/ Option[Success]) => Unit): Unit =
-    action.run.run.unsafePerformAsync {
-      case -\/(th) => throw th
-      case \/-(result) => register(result)
-    }
 }
 
-class AsyncOptActionFunctions[E] {
-
-  val MT = implicitly[MonadTrans[OptionT]]
-
-  val ME = OptionT.optionTMonadError[EitherT[Task, E, ?], E] //implicitly[MonadError[OptionT[EitherT[Task, E, ?], ?], E]]
+trait AsyncOptActionFunctions {
 
   def async[A](register: ((Throwable \/ A) => Unit) => Unit): AsyncOptAction[Throwable, A] = liftE(Task.async(register).attempt)
 
@@ -40,40 +27,51 @@ class AsyncOptActionFunctions[E] {
     def after(delay: Duration): AsyncOptAction[Throwable, A] = OptionT[EitherT[Task, Throwable, ?], A](EitherT.eitherT(Task.schedule(task, delay).attempt))
   }
 
-  def lift[A](task: Task[A]): AsyncOptAction[Throwable, A] = MT.liftM[EitherT[Task, Throwable, ?], A](EitherT.eitherT(task.attempt))
+  def lift[A](task: Task[A]): AsyncOptAction[Throwable, A] =
+    AsyncOptAction.asyncOptActionMonadTrans.liftM[EitherT[Task, Throwable, ?], A](EitherT.eitherT(task.attempt))
 
-  def liftE[B, A](task: Task[B \/ A]): AsyncOptAction[B, A] = MT.liftM[EitherT[Task, B, ?], A](EitherT.eitherT(task))
+  def liftE[B, A](task: Task[B \/ A]): AsyncOptAction[B, A] =
+    AsyncOptAction.asyncOptActionMonadTrans.liftM[EitherT[Task, B, ?], A](EitherT.eitherT(task))
 
-  def return_[A](value: => A): AsyncOptAction[E, A] = returnSome[A](value) //lift(Task.delay(value))
+  def return_[A](value: => A): AsyncOptAction[Nothing, A] = returnSome[A](value)
 
-  def returnSome[A](value: => A): AsyncOptAction[E, A] = OptionT.some[EitherT[Task, E, ?], A](value)
+  def returnSome[A](value: => A): AsyncOptAction[Nothing, A] = OptionT.some[EitherT[Task, Nothing, ?], A](value)
 
-  def returnNone[A]: AsyncOptAction[E, A] = OptionT.none[EitherT[Task, E, ?], A]
+  def returnNone[A]: AsyncOptAction[Nothing, A] = OptionT.none[EitherT[Task, Nothing, ?], A]
 
   def returnFromTryCatch[A](value: => A): AsyncOptAction[Throwable, A] = liftE(Task.delay(value).attempt)
 
-  def raiseError[A](e: E): AsyncOptAction[E, A] = ME.raiseError(e)
+  def raiseError[E, A](e: E): AsyncOptAction[E, A] = OptionT.optionTMonadError[EitherT[Task, E, ?], E].raiseError(e)
 
-  implicit def toMt[A](value: => A) = new {
-    def asAsyncOptAction: AsyncOptAction[E, A] = returnSome(value)
-  }
+  def runSync[Error, Success](action: AsyncOptAction[Error, Success]): Error \/ Option[Success] = action.run.run.unsafePerformSync
+
+  def runAsync[Error, Success](action: AsyncOptAction[Error, Success])(register: (Error \/ Option[Success]) => Unit): Unit =
+    action.run.run.unsafePerformAsync {
+      case -\/(th) => throw th
+      case \/-(result) => register(result)
+    }
 
 }
 
 trait ToAsyncOptActionOps {
 
+  implicit def toUpFail[E1, E2 >: E1, A](action: AsyncOptAction[E1, A]): AsyncOptAction[E2, A] = action.asInstanceOf[AsyncOptAction[E2, A]]
+
+  implicit def toMt[A](value: => A) = new {
+    def asAsyncOptAction[E]: AsyncOptAction[E, A] = AsyncOptAction.returnSome(value)
+  }
+
   implicit class ErrorHandler[E1, A](action: AsyncOptAction[E1, A]) {
 
-    val fun = new AsyncOptActionFunctions[E1]
-    import fun.ME.monadErrorSyntax._
-    import fun._
+    val ME = AsyncOptAction.asyncOptActionMonadError[E1]
+    import ME.monadErrorSyntax._
 
     def mapError[E2](handler: E1 => E2): AsyncOptAction[E2, A] = OptionT[EitherT[Task, E2, ?], A](action.run leftMap handler)
 
     def recover[B >: A](pf: PartialFunction[E1, B]): AsyncOptAction[E1, B] = {
       action.asInstanceOf[AsyncOptAction[E1, B]] handleError { err =>
-        if (pf.isDefinedAt(err)) return_(pf(err))
-        else raiseError(err)
+        if (pf.isDefinedAt(err)) AsyncOptAction.return_(pf(err))
+        else AsyncOptAction.raiseError(err)
       }
     }
 
@@ -93,5 +91,15 @@ trait ToAsyncOptActionOps {
     def executeAsync(register: (E \/ Option[A]) => Unit): Unit = AsyncOptAction.runAsync(action)(register)
 
   }
+
+}
+
+trait AsyncOptActionInstances {
+
+  implicit def asyncOptActionMonad[E] = OptionT.optionTMonadPlus[EitherT[Task, E, ?]]
+
+  implicit val asyncOptActionMonadTrans: MonadTrans[OptionT] = OptionT.optionTMonadTrans
+
+  implicit def asyncOptActionMonadError[E] = OptionT.optionTMonadError[EitherT[Task, E, ?], E]
 
 }

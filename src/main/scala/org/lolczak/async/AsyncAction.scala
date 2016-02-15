@@ -13,10 +13,6 @@ object AsyncAction extends AsyncActionFunctions with ToAsyncActionOps with Async
 
 trait AsyncActionFunctions {
 
-//  val MT = implicitly[MonadTrans[EitherT[?[_], E, ?]]]
-
-//  val ME = implicitly[MonadError[EitherT[Task, E, ?], E]]
-
   def async[A](register: ((Throwable \/ A) => Unit) => Unit): AsyncAction[Throwable, A] = liftE(Task.async(register).attempt)
 
   def delay[A](a: => A): AsyncAction[Throwable, A] = lift(Task.delay(a))
@@ -34,7 +30,7 @@ trait AsyncActionFunctions {
 
   def return_[A](value: => A)(implicit MT: MonadTrans[EitherT[?[_], Nothing, ?]]): AsyncAction[Nothing, A] = MT.liftM(Task.delay(value))
 
-  def returnOpt[E, A](value: => A)(implicit MT: MonadTrans[EitherT[?[_], Nothing, ?]]): AsyncAction[Nothing, Option[A]] = MT.liftM(Task.delay(Option(value)))
+  def returnOpt[A](value: => A)(implicit MT: MonadTrans[EitherT[?[_], Nothing, ?]]): AsyncAction[Nothing, Option[A]] = MT.liftM(Task.delay(Option(value)))
 
   def returnOptFromTryCatch[A](value: => A): AsyncAction[Throwable, Option[A]] = EitherT.eitherT(Task.delay(Option(value)).attempt)
 

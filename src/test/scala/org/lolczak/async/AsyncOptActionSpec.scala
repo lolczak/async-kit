@@ -7,9 +7,6 @@ import scalaz.{-\/, \/-}
 
 class AsyncOptActionSpec extends FlatSpec with Matchers {
 
-  val fun = functionsFor[Failure]
-  import fun._
-
   "Async action" should "fork block of code" in {
     //when
     val \/-(result) = fork { Some(Thread.currentThread().getId) } executeSync()
@@ -43,5 +40,29 @@ class AsyncOptActionSpec extends FlatSpec with Matchers {
     action(5).executeSync() shouldBe \/-(Some("10"))
     action(1).executeSync() shouldBe \/-(None)
   }
+
+  it should "convert action to proper failure" in {
+    val action = for {
+      res1 <- delay(1) mapError { case th => Failure(th.getMessage) }
+      res2 <- return_(3)
+    } yield res1 + res2
+
+    action.executeSync() shouldBe \/-(Some(4))
+  }
+
+  it should "find upper bound of failure" in {
+    trait Err
+    case object Err1 extends Err
+    case object Err2 extends Err
+
+    val action: AsyncOptAction[Err , Int] =
+      for {
+        res1 <- delay(1) mapError[Err] { case th => Err1}
+        res2 <- delay(1) mapError { case th => Err2}
+      } yield res1 + res2
+
+    action.executeSync() shouldBe \/-(Some(2))
+  }
+
 
 }
