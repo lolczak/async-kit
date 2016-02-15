@@ -30,4 +30,17 @@ class AsyncOptActionSpec extends FlatSpec with Matchers {
     result shouldBe \/-(Some("OK"))
   }
 
+  it should "support filtering" in {
+    //given
+    def action(value: Int) =
+      for {
+        response <- fork { Some(value) } mapError { case th => Failure(th.getMessage) }
+        if response == 5
+        result   <- fork { Some(response * 2) } mapError { case th => Failure(th.getMessage) }
+      } yield result
+    //then
+    action(5).executeSync() shouldBe \/-(Some(10))
+    action(1).executeSync() shouldBe \/-(None)
+  }
+
 }
