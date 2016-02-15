@@ -2,7 +2,8 @@ package org.lolczak.async
 
 import org.scalatest.{Matchers, FlatSpec}
 import AsyncOptAction._
-import scalaz.{-\/, \/-}
+import scalaz.concurrent.Task
+import scalaz.{EitherT, OptionT, -\/, \/-}
 
 class AsyncOptActionSpec extends FlatSpec with Matchers {
 
@@ -32,14 +33,14 @@ class AsyncOptActionSpec extends FlatSpec with Matchers {
 
   it should "support filtering" in {
     //given
-    def action(value: Int) =
+    def action(value: Int): AsyncOptAction[Failure, String] =
       for {
         response <- fork { Some(value) } mapError { case th => Failure(th.getMessage) }
         if response == 5
-        result   <- fork { Some(response * 2) } mapError { case th => Failure(th.getMessage) }
+        result   <- fork { Some((response * 2).toString) } mapError { case th => Failure(th.getMessage) }
       } yield result
     //then
-    action(5).executeSync() shouldBe \/-(Some(10))
+    action(5).executeSync() shouldBe \/-(Some("10"))
     action(1).executeSync() shouldBe \/-(None)
   }
 
