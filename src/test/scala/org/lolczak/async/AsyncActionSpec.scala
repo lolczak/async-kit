@@ -61,5 +61,9 @@ class AsyncActionSpec extends FlatSpec with Matchers {
     action.executeSync() shouldBe \/-()
   }
 
+  it should "support bind syntax by default" in {
+    delay(1) >> delay(2) >>! (_ => delay(3)) executeSync() shouldBe \/-(2)
+  }
+
 }
 

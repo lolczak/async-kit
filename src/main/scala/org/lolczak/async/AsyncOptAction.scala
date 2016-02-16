@@ -6,6 +6,7 @@ import scala.concurrent.duration.Duration
 import scala.language.implicitConversions
 import scalaz._
 import scalaz.concurrent.{Strategy, Task}
+import scalaz.syntax.{ApplicativeOps, MonadOps, BindOps}
 
 object AsyncOptAction extends AsyncOptActionFunctions with ToAsyncOptActionOps with AsyncOptActionInstances {
 
@@ -54,6 +55,15 @@ trait AsyncOptActionFunctions {
 }
 
 trait ToAsyncOptActionOps {
+
+  implicit def toBindOps[E, A](action: AsyncOptAction[E, A]): BindOps[AsyncOptAction[E, ?], A] =
+    AsyncOptAction.asyncOptActionMonad[E].bindSyntax.ToBindOps[A](action)
+
+  implicit def toMonadOps[E, A](action: AsyncOptAction[E, A]): MonadOps[AsyncOptAction[E, ?], A] =
+    AsyncOptAction.asyncOptActionMonad[E].monadSyntax.ToMonadOps[A](action)
+
+  implicit def toApplicativeOps[E, A](action: AsyncOptAction[E, A]): ApplicativeOps[AsyncOptAction[E, ?], A] =
+    AsyncOptAction.asyncOptActionMonad[E].applicativeSyntax.ToApplicativeOps[A](action)
 
   implicit def toUpperBound[E1, E2 >: E1, A1, A2 >: A1](action: AsyncOptAction[E1, A1]): AsyncOptAction[E2, A2] = action.asInstanceOf[AsyncOptAction[E2, A2]]
 
