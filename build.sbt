@@ -2,7 +2,7 @@ name := "async"
 
 organization := "org.lolczak"
 
-version := "0.2.0-SNAPSHOT"
+version := "0.2.0"
 
 scalaVersion := "2.11.7"
 
@@ -13,18 +13,18 @@ resolvers += "bintray/non" at "http://dl.bintray.com/non/maven"
 addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.7.1")
 
 val akka = Seq(
-  "com.typesafe.akka" %% "akka-actor" % "2.3.8"
+  "com.typesafe.akka" %% "akka-actor" % "2.3.8" % Provided
 )
 
 val scalaz = Seq (
-  "org.scalaz" %% "scalaz-core" % "7.2.0",
-  "org.scalaz" %% "scalaz-concurrent" % "7.2.0"
+  "org.scalaz" %% "scalaz-core" % "7.2.0" % Provided,
+  "org.scalaz" %% "scalaz-concurrent" % "7.2.0" % Provided
 )
 
 val testLibs = Seq(
-  "org.scalatest" %% "scalatest" % "2.2.2" % "test",
-  "org.scalacheck" %% "scalacheck" % "1.11.6" % "test",
-  "org.mockito" % "mockito-all" % "1.10.19"
+  "org.scalatest" %% "scalatest" % "2.2.2" % Test,
+  "org.scalacheck" %% "scalacheck" % "1.11.6" % Test,
+  "org.mockito" % "mockito-all" % "1.10.19" % Test
 )
 
 libraryDependencies ++= scalaz ++ testLibs ++ akka
