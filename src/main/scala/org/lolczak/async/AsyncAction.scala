@@ -51,22 +51,22 @@ trait AsyncActionFunctions {
 
 trait ToAsyncActionOps {
 
-  implicit def toBindOps[E, A](action: AsyncAction[E, A]): BindOps[AsyncAction[E, ?], A] =
+  implicit def toActionBindOps[E, A](action: AsyncAction[E, A]): BindOps[AsyncAction[E, ?], A] =
     AsyncAction.asyncActionMonad[E].bindSyntax.ToBindOps[A](action)
 
-  implicit def toMonadOps[E, A](action: AsyncAction[E, A]): MonadOps[AsyncAction[E, ?], A] =
+  implicit def toActionMonadOps[E, A](action: AsyncAction[E, A]): MonadOps[AsyncAction[E, ?], A] =
     AsyncAction.asyncActionMonad[E].monadSyntax.ToMonadOps[A](action)
 
-  implicit def toApplicativeOps[E, A](action: AsyncAction[E, A]): ApplicativeOps[AsyncAction[E, ?], A] =
+  implicit def toActionApplicativeOps[E, A](action: AsyncAction[E, A]): ApplicativeOps[AsyncAction[E, ?], A] =
     AsyncAction.asyncActionMonad[E].applicativeSyntax.ToApplicativeOps[A](action)
 
-  implicit def toUpperBounds[E1, E2 >: E1, A1, A2 >: A1](action: AsyncAction[E1, A1]): AsyncAction[E2, A2] = action.asInstanceOf[AsyncAction[E2, A2]]
+  implicit def toActionUpperBounds[E1, E2 >: E1, A1, A2 >: A1](action: AsyncAction[E1, A1]): AsyncAction[E2, A2] = action.asInstanceOf[AsyncAction[E2, A2]]
 
-  implicit def toMt[A](value: => A) = new {
+  implicit def toActionMt[A](value: => A) = new {
     def asAsyncAction[E]: AsyncAction[E, A] = AsyncAction.return_(value)
   }
 
-  implicit class ErrorHandler[E1, A](action: AsyncAction[E1, A]) {
+  implicit class ToActionRecoveryOps[E1, A](action: AsyncAction[E1, A]) {
 
     val ME = AsyncAction.asyncActionMonadError[E1]
     import ME.monadErrorSyntax._

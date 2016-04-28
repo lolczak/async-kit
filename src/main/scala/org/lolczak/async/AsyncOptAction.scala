@@ -17,7 +17,7 @@ trait AsyncOptActionFunctions {
   def async[A](register: ((Throwable \/ A) => Unit) => Unit): AsyncOptAction[Throwable, A] = liftE(Task.async(attachErrorHandling(register)).attempt)
 
   def asyncOpt[A](register: ((Throwable \/ Option[A]) => Unit) => Unit): AsyncOptAction[Throwable, A] =
-    OptionT[EitherT[Task, Throwable, ?], A](EitherT.eitherT(Task.async(register).attempt))
+    OptionT[EitherT[Task, Throwable, ?], A](EitherT.eitherT(Task.async(attachErrorHandling(register)).attempt))
 
   def delay[A](a: => A): AsyncOptAction[Throwable, A] = lift(Task.delay(a))
 
@@ -56,22 +56,22 @@ trait AsyncOptActionFunctions {
 
 trait ToAsyncOptActionOps {
 
-  implicit def toBindOps[E, A](action: AsyncOptAction[E, A]): BindOps[AsyncOptAction[E, ?], A] =
+  implicit def toOptActionBindOps[E, A](action: AsyncOptAction[E, A]): BindOps[AsyncOptAction[E, ?], A] =
     AsyncOptAction.asyncOptActionMonad[E].bindSyntax.ToBindOps[A](action)
 
-  implicit def toMonadOps[E, A](action: AsyncOptAction[E, A]): MonadOps[AsyncOptAction[E, ?], A] =
+  implicit def toOptActionMonadOps[E, A](action: AsyncOptAction[E, A]): MonadOps[AsyncOptAction[E, ?], A] =
     AsyncOptAction.asyncOptActionMonad[E].monadSyntax.ToMonadOps[A](action)
 
-  implicit def toApplicativeOps[E, A](action: AsyncOptAction[E, A]): ApplicativeOps[AsyncOptAction[E, ?], A] =
+  implicit def toOptActionApplicativeOps[E, A](action: AsyncOptAction[E, A]): ApplicativeOps[AsyncOptAction[E, ?], A] =
     AsyncOptAction.asyncOptActionMonad[E].applicativeSyntax.ToApplicativeOps[A](action)
 
-  implicit def toUpperBound[E1, E2 >: E1, A1, A2 >: A1](action: AsyncOptAction[E1, A1]): AsyncOptAction[E2, A2] = action.asInstanceOf[AsyncOptAction[E2, A2]]
+  implicit def toOptActionUpperBound[E1, E2 >: E1, A1, A2 >: A1](action: AsyncOptAction[E1, A1]): AsyncOptAction[E2, A2] = action.asInstanceOf[AsyncOptAction[E2, A2]]
 
-  implicit def toMt[A](value: => A) = new {
+  implicit def toOptActionMt[A](value: => A) = new {
     def asAsyncOptAction[E]: AsyncOptAction[E, A] = AsyncOptAction.returnSome(value)
   }
 
-  implicit class ErrorHandler[E1, A](action: AsyncOptAction[E1, A]) {
+  implicit class ToOptActionRecoveryOps[E1, A](action: AsyncOptAction[E1, A]) {
 
     val ME = AsyncOptAction.asyncOptActionMonadError[E1]
     import ME.monadErrorSyntax._
