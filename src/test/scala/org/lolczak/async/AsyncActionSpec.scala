@@ -65,5 +65,10 @@ class AsyncActionSpec extends FlatSpec with Matchers {
     delay(1) >> delay(2) >>! (_ => delay(3)) executeSync() shouldBe \/-(2)
   }
 
+  it should "catch exceptions during registering async listener" in {
+    val ex = new Exception
+    async[Unit](l => throw ex) executeSync() shouldBe -\/(ex)
+  }
+
 }
 

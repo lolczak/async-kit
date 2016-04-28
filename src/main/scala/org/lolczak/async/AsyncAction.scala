@@ -6,7 +6,7 @@ import scala.concurrent.duration.Duration
 import scala.language.implicitConversions
 import scalaz._
 import scalaz.concurrent.{Strategy, Task}
-import scalaz.syntax.{BindOps, MonadOps, ApplicativeOps}
+import scalaz.syntax.{ApplicativeOps, BindOps, MonadOps}
 
 object AsyncAction extends AsyncActionFunctions with ToAsyncActionOps with AsyncActionInstances {
 
@@ -14,7 +14,7 @@ object AsyncAction extends AsyncActionFunctions with ToAsyncActionOps with Async
 
 trait AsyncActionFunctions {
 
-  def async[A](register: ((Throwable \/ A) => Unit) => Unit): AsyncAction[Throwable, A] = liftE(Task.async(register).attempt)
+  def async[A](register: ((Throwable \/ A) => Unit) => Unit): AsyncAction[Throwable, A] = liftE(Task.async(attachErrorHandling(register)).attempt)
 
   def delay[A](a: => A): AsyncAction[Throwable, A] = lift(Task.delay(a))
 

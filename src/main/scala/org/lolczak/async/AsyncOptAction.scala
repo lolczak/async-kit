@@ -14,7 +14,7 @@ object AsyncOptAction extends AsyncOptActionFunctions with ToAsyncOptActionOps w
 
 trait AsyncOptActionFunctions {
 
-  def async[A](register: ((Throwable \/ A) => Unit) => Unit): AsyncOptAction[Throwable, A] = liftE(Task.async(register).attempt)
+  def async[A](register: ((Throwable \/ A) => Unit) => Unit): AsyncOptAction[Throwable, A] = liftE(Task.async(attachErrorHandling(register)).attempt)
 
   def asyncOpt[A](register: ((Throwable \/ Option[A]) => Unit) => Unit): AsyncOptAction[Throwable, A] =
     OptionT[EitherT[Task, Throwable, ?], A](EitherT.eitherT(Task.async(register).attempt))
