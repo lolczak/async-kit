@@ -6,4 +6,6 @@ package object error {
 
   val EveryErrorMatcher: RecoverableErrorMatcher[Any] = _ => true
 
+  type ThrowableMapper[+E] = Throwable => E
+
 }

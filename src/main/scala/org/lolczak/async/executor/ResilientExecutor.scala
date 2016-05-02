@@ -48,7 +48,9 @@ class ResilientExecutor(maxRetries: Int, executionLimit: FiniteDuration, backoff
   private def schedule[E](task: => Unit, waitTime: FiniteDuration): AsyncAction[E, Unit] =
     EitherT.eitherT(Task.schedule(task, waitTime) map { case result => \/-().asInstanceOf[E \/ Unit] })
 
-  override def executeOpt[E, A](optAction: AsyncOptAction[E, A])(implicit isErrRecoverable: RecoverableErrorMatcher[E] = EveryErrorMatcher): Future[\/[E, Option[A]]] = ???
+  override def executeOpt[E, A](optAction: AsyncOptAction[E, A])(implicit isErrRecoverable: RecoverableErrorMatcher[E] = EveryErrorMatcher): Future[\/[E, Option[A]]] =
+    execute(optAction.run)
+
 }
 
 object ResilientExecutor {

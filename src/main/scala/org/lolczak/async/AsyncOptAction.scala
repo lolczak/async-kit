@@ -2,6 +2,8 @@ package org.lolczak.async
 
 import java.util.concurrent.{ExecutorService, ScheduledExecutorService}
 
+import org.lolczak.async.error._
+
 import scala.concurrent.duration.Duration
 import scala.language.implicitConversions
 import scalaz._
@@ -20,6 +22,8 @@ trait AsyncOptActionFunctions {
     OptionT[EitherT[Task, Throwable, ?], A](EitherT.eitherT(Task.async(attachErrorHandling(register)).attempt))
 
   def delay[A](a: => A): AsyncOptAction[Throwable, A] = lift(Task.delay(a))
+
+  def defer[E, A](a: => A)(implicit throwableMapper: ThrowableMapper[E]): AsyncOptAction[E, A] = OptionT[EitherT[Task, E, ?], A](delay(a).run leftMap throwableMapper)
 
   def fork[A](task: => Option[A])(implicit pool: ExecutorService = Strategy.DefaultExecutorService): AsyncOptAction[Throwable, A] =
     OptionT[EitherT[Task, Throwable, ?], A](EitherT.eitherT(Task { task } attempt))
