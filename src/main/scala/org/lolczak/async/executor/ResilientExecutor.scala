@@ -29,9 +29,8 @@ class ResilientExecutor(maxRetries: Int, executionLimit: FiniteDuration, backoff
   }
 
   private def recovery[E, A](action: AsyncAction[E, A])(retryCount: Int, startTimeMs: Long): PartialFunction[E, AsyncAction[E, A]] = {
-    //todo check limits!!!
-    case failure if retryCount <= maxRetries =>
-      val waitTime = backoffTimeCalculator.evalBackoffTime(retryCount, FiniteDuration(System.currentTimeMillis() - startTimeMs, TimeUnit.MILLISECONDS))
+    case failure if !isAnyLimitExceeded(retryCount, startTimeMs) =>
+      val waitTime = backoffTimeCalculator.evalBackoffTime(retryCount, durationSince(startTimeMs))
       val recoverableAction =
         for {
           _ <- logger.error(s"Error occurred during action execution $failure. Retrying $retryCount time after $waitTime.").asAsyncAction[E]
@@ -40,6 +39,10 @@ class ResilientExecutor(maxRetries: Int, executionLimit: FiniteDuration, backoff
         } yield result
       recoverableAction recoverWith recovery(action)(retryCount + 1, startTimeMs)
   }
+
+  private def isAnyLimitExceeded[A, E](retryCount: Int, startTimeMs: Long): Boolean = retryCount > retryLimit || durationSince(startTimeMs) > executionLimit
+
+  private def durationSince(startTimeMs: Long) = FiniteDuration(System.currentTimeMillis() - startTimeMs, TimeUnit.MILLISECONDS)
 
   private def schedule[E](task: => Unit, waitTime: FiniteDuration): AsyncAction[E, Unit] =
     EitherT.eitherT(Task.schedule(task, waitTime) map { case result => \/-().asInstanceOf[E \/ Unit] })

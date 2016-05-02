@@ -20,6 +20,14 @@ class ResilientExecutorSpec extends FlatSpec with Matchers with ScalaFutures {
     count shouldBe 4
   }
 
+  it should "stop after execution limit" in new TestContext {
+    override lazy val executionLimit = FiniteDuration(10, TimeUnit.MILLISECONDS)
+    var count = 0
+    val action = delay { count += 1 } >> raiseError(new Exception)
+    objectUnderTest.execute(action).futureValue
+    count shouldBe 2
+  }
+
   it should "retry after exponential time" in new TestContext {
     val start = System.currentTimeMillis()
     val result = objectUnderTest.execute(raiseError(Failure("err"))).futureValue
@@ -32,7 +40,9 @@ class ResilientExecutorSpec extends FlatSpec with Matchers with ScalaFutures {
 
     implicit val patienceConfig = PatienceConfig(timeout = scaled(Span(1500, Millis)), interval = scaled(Span(15, Millis)))
 
-    val objectUnderTest = new ResilientExecutor(3, FiniteDuration(1, TimeUnit.MINUTES), new ExponentialBackoffCalculator(FiniteDuration(10, TimeUnit.MILLISECONDS), 0))
+    lazy val executionLimit = FiniteDuration(1, TimeUnit.MINUTES)
+
+    lazy val objectUnderTest = new ResilientExecutor(3, executionLimit, new ExponentialBackoffCalculator(FiniteDuration(10, TimeUnit.MILLISECONDS), 0))
 
   }
 
