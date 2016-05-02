@@ -34,8 +34,8 @@ class ResilientExecutor(maxRetries: Int, executionLimit: FiniteDuration, backoff
       val waitTime = backoffTimeCalculator.evalBackoffTime(retryCount, durationSince(startTimeMs))
       val recoverableAction =
         for {
-          _ <- logger.error(s"Error occurred during action execution $failure. Retrying $retryCount time after $waitTime.").asAsyncAction[E]
-          _ <- schedule[E](logger.warn(s"Retrying $retryCount time"), waitTime)
+          _      <- logger.error(s"Error occurred during action execution $failure. Retrying $retryCount time after $waitTime.").asAsyncAction[E]
+          _      <- schedule[E](logger.warn(s"Retrying $retryCount time"), waitTime)
           result <- action
         } yield result
       recoverableAction recoverWith recovery(action)(retryCount + 1, startTimeMs)
