@@ -4,6 +4,7 @@ import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 
 import com.typesafe.scalalogging.slf4j.LazyLogging
 import org.lolczak.async.AsyncAction._
+import org.lolczak.async.error.{EveryErrorMatcher, RecoverableErrorMatcher}
 import org.lolczak.async.executor.ResilientExecutor.MaxRetriesLimit
 import org.lolczak.async.{AsyncAction, AsyncOptAction}
 
@@ -18,7 +19,7 @@ class ResilientExecutor(maxRetries: Int, executionLimit: FiniteDuration, backoff
 
   val retryLimit = Math.min(maxRetries, MaxRetriesLimit)
 
-  override def execute[E, A](action: AsyncAction[E, A]): Future[\/[E, A]] = {
+  override def execute[E, A](action: AsyncAction[E, A])(implicit errorMatcher: RecoverableErrorMatcher[E] = new EveryErrorMatcher[E]): Future[\/[E, A]] = {
     val recoverableAction = action recoverWith recovery(action)(1, System.currentTimeMillis()) //todo refactor
     val promise = Promise[E \/ A]()
     recoverableAction.run.unsafePerformAsync {
@@ -28,8 +29,8 @@ class ResilientExecutor(maxRetries: Int, executionLimit: FiniteDuration, backoff
     promise.future
   }
 
-  private def recovery[E, A](action: AsyncAction[E, A])(retryCount: Int, startTimeMs: Long): PartialFunction[E, AsyncAction[E, A]] = {
-    case failure if !isAnyLimitExceeded(retryCount, startTimeMs) =>
+  private def recovery[E, A](action: AsyncAction[E, A])(retryCount: Int, startTimeMs: Long)(implicit errorMatcher: RecoverableErrorMatcher[E]): PartialFunction[E, AsyncAction[E, A]] = {
+    case failure if !isAnyLimitExceeded(retryCount, startTimeMs) && errorMatcher.isErrorRecoverable(failure) =>
       val waitTime = backoffTimeCalculator.evalBackoffTime(retryCount, durationSince(startTimeMs))
       val recoverableAction =
         for {
@@ -47,7 +48,7 @@ class ResilientExecutor(maxRetries: Int, executionLimit: FiniteDuration, backoff
   private def schedule[E](task: => Unit, waitTime: FiniteDuration): AsyncAction[E, Unit] =
     EitherT.eitherT(Task.schedule(task, waitTime) map { case result => \/-().asInstanceOf[E \/ Unit] })
 
-  override def execute[E, A](optAction: AsyncOptAction[E, A]): Future[\/[E, Option[A]]] = ???
+  override def executeOpt[E, A](optAction: AsyncOptAction[E, A])(implicit errorMatcher: RecoverableErrorMatcher[E] = new EveryErrorMatcher[E]): Future[\/[E, Option[A]]] = ???
 }
 
 object ResilientExecutor {

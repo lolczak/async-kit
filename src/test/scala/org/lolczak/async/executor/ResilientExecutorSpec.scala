@@ -4,6 +4,7 @@ import java.util.concurrent.TimeUnit
 
 import org.lolczak.async.AsyncAction._
 import org.lolczak.async.Failure
+import org.lolczak.async.error.RecoverableErrorMatcher
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Millis, Span}
 import org.scalatest.{Matchers, FlatSpec}
@@ -33,6 +34,16 @@ class ResilientExecutorSpec extends FlatSpec with Matchers with ScalaFutures {
     val result = objectUnderTest.execute(raiseError(Failure("err"))).futureValue
     val duration = System.currentTimeMillis() - start
     duration should be >= (10l +  20l + 40l)
+  }
+
+  it should "not retry when error is not recoverable" in new TestContext {
+    implicit val errorMatcher: RecoverableErrorMatcher[Throwable] = new RecoverableErrorMatcher[Throwable] {
+      override def isErrorRecoverable(error: Throwable): Boolean = error.isInstanceOf[RuntimeException]
+    }
+    var count = 0
+    val action = delay { count += 1 } >> raiseError(new Exception)
+    objectUnderTest.execute(action).futureValue
+    count shouldBe 1
   }
 
   trait TestContext {
