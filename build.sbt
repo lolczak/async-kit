@@ -2,7 +2,7 @@ name := "async"
 
 organization := "org.lolczak"
 
-version := "0.2.1"
+version := "0.3.0-SNAPSHOT"
 
 scalaVersion := "2.11.7"
 
@@ -21,13 +21,18 @@ val scalaz = Seq (
   "org.scalaz" %% "scalaz-concurrent" % "7.2.0" % Provided
 )
 
+val log = Seq(
+  "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.1.2" % Provided exclude("org.scala-lang", "scala-reflect"),
+  "ch.qos.logback" % "logback-classic" % "1.1.2" % Test
+)
+
 val testLibs = Seq(
   "org.scalatest" %% "scalatest" % "2.2.2" % Test,
   "org.scalacheck" %% "scalacheck" % "1.11.6" % Test,
   "org.mockito" % "mockito-all" % "1.10.19" % Test
 )
 
-libraryDependencies ++= scalaz ++ testLibs ++ akka
+libraryDependencies ++= scalaz ++ testLibs ++ akka ++ log
 
 credentials += Credentials("Nexus Repository Manager", "nexus.blocker.vpn", "admin", "admin123")
 
