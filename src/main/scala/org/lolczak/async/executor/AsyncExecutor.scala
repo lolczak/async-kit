@@ -8,8 +8,8 @@ import scalaz.\/
 
 trait AsyncExecutor {
 
-  def execute[E, A](action: AsyncAction[E, A])(implicit errorMatcher: RecoverableErrorMatcher[E] = new EveryErrorMatcher[E]): Future[E \/ A]
+  def execute[E, A](action: AsyncAction[E, A])(implicit isErrRecoverable: RecoverableErrorMatcher[E] = EveryErrorMatcher): Future[E \/ A]
 
-  def executeOpt[E, A](optAction: AsyncOptAction[E, A])(implicit errorMatcher: RecoverableErrorMatcher[E] = new EveryErrorMatcher[E]): Future[E \/ Option[A]]
+  def executeOpt[E, A](optAction: AsyncOptAction[E, A])(implicit isErrRecoverable: RecoverableErrorMatcher[E] = EveryErrorMatcher): Future[E \/ Option[A]]
 
 }

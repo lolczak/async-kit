@@ -19,7 +19,7 @@ class ResilientExecutor(maxRetries: Int, executionLimit: FiniteDuration, backoff
 
   val retryLimit = Math.min(maxRetries, MaxRetriesLimit)
 
-  override def execute[E, A](action: AsyncAction[E, A])(implicit errorMatcher: RecoverableErrorMatcher[E] = new EveryErrorMatcher[E]): Future[\/[E, A]] = {
+  override def execute[E, A](action: AsyncAction[E, A])(implicit isErrRecoverable: RecoverableErrorMatcher[E] = EveryErrorMatcher): Future[\/[E, A]] = {
     val recoverableAction = action recoverWith recovery(action)(1, System.currentTimeMillis()) //todo refactor
     val promise = Promise[E \/ A]()
     recoverableAction.run.unsafePerformAsync {
@@ -29,8 +29,8 @@ class ResilientExecutor(maxRetries: Int, executionLimit: FiniteDuration, backoff
     promise.future
   }
 
-  private def recovery[E, A](action: AsyncAction[E, A])(retryCount: Int, startTimeMs: Long)(implicit errorMatcher: RecoverableErrorMatcher[E]): PartialFunction[E, AsyncAction[E, A]] = {
-    case failure if !isAnyLimitExceeded(retryCount, startTimeMs) && errorMatcher.isErrorRecoverable(failure) =>
+  private def recovery[E, A](action: AsyncAction[E, A])(retryCount: Int, startTimeMs: Long)(implicit isErrRecoverable: RecoverableErrorMatcher[E]): PartialFunction[E, AsyncAction[E, A]] = {
+    case failure if !isAnyLimitExceeded(retryCount, startTimeMs) && isErrRecoverable(failure) =>
       val waitTime = backoffTimeCalculator.evalBackoffTime(retryCount, durationSince(startTimeMs))
       val recoverableAction =
         for {
@@ -48,7 +48,7 @@ class ResilientExecutor(maxRetries: Int, executionLimit: FiniteDuration, backoff
   private def schedule[E](task: => Unit, waitTime: FiniteDuration): AsyncAction[E, Unit] =
     EitherT.eitherT(Task.schedule(task, waitTime) map { case result => \/-().asInstanceOf[E \/ Unit] })
 
-  override def executeOpt[E, A](optAction: AsyncOptAction[E, A])(implicit errorMatcher: RecoverableErrorMatcher[E] = new EveryErrorMatcher[E]): Future[\/[E, Option[A]]] = ???
+  override def executeOpt[E, A](optAction: AsyncOptAction[E, A])(implicit isErrRecoverable: RecoverableErrorMatcher[E] = EveryErrorMatcher): Future[\/[E, Option[A]]] = ???
 }
 
 object ResilientExecutor {

@@ -37,7 +37,7 @@ class ResilientExecutorSpec extends FlatSpec with Matchers with ScalaFutures {
   }
 
   it should "not retry when error is not recoverable" in new TestContext {
-    implicit val errorMatcher: RecoverableErrorMatcher[Throwable] = (error: Throwable) => error.isInstanceOf[RuntimeException]
+    implicit val errorMatcher = (error: Throwable) => error.isInstanceOf[RuntimeException]
     var count = 0
     val action = delay { count += 1 } >> raiseError(new Exception)
     objectUnderTest.execute(action).futureValue
