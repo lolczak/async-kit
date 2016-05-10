@@ -2,7 +2,7 @@ package org.lolczak.async
 
 import java.util.concurrent.{ExecutorService, ScheduledExecutorService}
 
-import org.lolczak.async.error.{<:!<, ThrowableMapper}
+import org.lolczak.async.error.ThrowableMapper
 
 import scala.concurrent.duration.Duration
 import scala.language.implicitConversions
