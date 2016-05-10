@@ -2,7 +2,7 @@ package org.lolczak.async
 
 import java.util.concurrent.{ExecutorService, ScheduledExecutorService}
 
-import org.lolczak.async.error.ThrowableMapper
+import org.lolczak.async.error.{<:!<, ThrowableMapper}
 
 import scala.concurrent.duration.Duration
 import scala.language.implicitConversions
@@ -20,7 +20,7 @@ trait AsyncActionFunctions {
 
   def delay[A](a: => A): AsyncAction[Throwable, A] = lift(Task.delay(a))
 
-  def defer[E, A](a: => A)(implicit throwableMapper: ThrowableMapper[E]): AsyncAction[E, A] = delay(a) leftMap throwableMapper
+  def defer[E, A](a: => A)(implicit throwableMapper: ThrowableMapper[E]): AsyncAction[E, A] = delay(a) leftMap throwableMapper.mapThrowable
 
   def fork[A](task: => A)(implicit pool: ExecutorService = Strategy.DefaultExecutorService): AsyncAction[Throwable, A] =
     lift(Task { task })

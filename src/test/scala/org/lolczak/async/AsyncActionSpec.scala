@@ -1,8 +1,8 @@
 package org.lolczak.async
 
+import org.lolczak.async.error.ThrowableMapper
 import org.scalatest.{Matchers, FlatSpec}
 import AsyncAction._
-
 import scalaz.{-\/, \/-}
 
 class AsyncActionSpec extends FlatSpec with Matchers {
@@ -68,6 +68,11 @@ class AsyncActionSpec extends FlatSpec with Matchers {
   it should "catch exceptions during registering async listener" in {
     val ex = new Exception
     async[Unit](l => throw ex) executeSync() shouldBe -\/(ex)
+  }
+
+  it should "defer block of code" in {
+    implicit val thMapper: ThrowableMapper[String] = (th:Throwable) => th.toString
+    defer { 1 } executeSync() shouldBe \/-(1)
   }
 
 }

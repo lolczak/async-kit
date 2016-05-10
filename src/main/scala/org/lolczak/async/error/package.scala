@@ -6,6 +6,12 @@ package object error {
 
   val EveryErrorMatcher: RecoverableErrorMatcher[Any] = _ => true
 
-  type ThrowableMapper[+E] = Throwable => E
+  trait ThrowableMapper[+E] {
+    def mapThrowable(th: Throwable): E
+  }
+
+  implicit def funToThMapper[E](f: Throwable => E): ThrowableMapper[E] = new ThrowableMapper[E] {
+    override def mapThrowable(th: Throwable): E = f(th)
+  }
 
 }
