@@ -4,6 +4,7 @@ import java.util.concurrent.{ExecutorService, ScheduledExecutorService}
 
 import org.lolczak.async.error.ThrowableMapper
 
+import scala.concurrent.{Promise, Future}
 import scala.concurrent.duration.Duration
 import scala.language.implicitConversions
 import scalaz._
@@ -99,6 +100,15 @@ trait ToAsyncActionOps {
   }
 
   implicit class ToActionOps[E, A](action: AsyncAction[E, A]) {
+
+    def execute(): Future[E \/ A] = {
+      val promise = Promise[E \/ A]()
+      action.run.unsafePerformAsync {
+        case -\/(th)     => promise.failure(th)
+        case \/-(result) => promise.success(result)
+      }
+      promise.future
+    }
 
     def executeSync(): E \/ A = AsyncAction.runSync(action)
 
