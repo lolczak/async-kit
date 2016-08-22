@@ -28,6 +28,14 @@ trait AsyncOptActionFunctions {
 
   def async[A](register: ((Throwable \/ A) => Unit) => Unit): AsyncOptAction[Throwable, A] = liftE(Task.async(attachErrorHandling(register)).attempt)
 
+  def asyncOptF[A](start: () => Future[Option[A]])(implicit ec: ExecutionContext): AsyncOptAction[Throwable, A] =
+    asyncOpt[A] { k =>
+      start().onComplete {
+        case TryFailure(th)     => k(-\/(th))
+        case TrySuccess(result) => k(\/-(result))
+      }
+    }
+
   def asyncOpt[A](register: ((Throwable \/ Option[A]) => Unit) => Unit): AsyncOptAction[Throwable, A] =
     OptionT[EitherT[Task, Throwable, ?], A](EitherT.eitherT(Task.async(attachErrorHandling(register)).attempt))
 
