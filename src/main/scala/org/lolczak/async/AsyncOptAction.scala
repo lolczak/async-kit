@@ -4,18 +4,27 @@ import java.util.concurrent.{ExecutorService, ScheduledExecutorService}
 
 import org.lolczak.async.error._
 
-import scala.concurrent.{Promise, Future}
+import scala.concurrent.{ExecutionContext, Promise, Future}
 import scala.concurrent.duration.Duration
 import scala.language.implicitConversions
 import scalaz._
 import scalaz.concurrent.{Strategy, Task}
 import scalaz.syntax.{ApplicativeOps, MonadOps, BindOps}
+import scala.util.{Failure => TryFailure, Success => TrySuccess}
 
 object AsyncOptAction extends AsyncOptActionFunctions with ToAsyncOptActionOps with AsyncOptActionInstances {
 
 }
 
 trait AsyncOptActionFunctions {
+
+  def asyncF[A](start: () => Future[A])(implicit ec: ExecutionContext): AsyncOptAction[Throwable, A] =
+    async[A] { k =>
+      start().onComplete {
+        case TryFailure(th)     => k(-\/(th))
+        case TrySuccess(result) => k(\/-(result))
+      }
+    }
 
   def async[A](register: ((Throwable \/ A) => Unit) => Unit): AsyncOptAction[Throwable, A] = liftE(Task.async(attachErrorHandling(register)).attempt)
 

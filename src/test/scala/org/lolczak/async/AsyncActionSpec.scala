@@ -79,7 +79,7 @@ class AsyncActionSpec extends FlatSpec with Matchers {
   it should "defer future start" in {
     import scala.concurrent.ExecutionContext.Implicits.global
     var i = 1
-    val action = fromFuture { () => Future { i=2; i} }
+    val action = asyncF { () => Future { i=2; i} }
     i shouldBe 1
     action.executeSync() shouldBe \/-(2)
     i shouldBe 2

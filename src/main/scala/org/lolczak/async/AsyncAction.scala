@@ -18,7 +18,7 @@ object AsyncAction extends AsyncActionFunctions with ToAsyncActionOps with Async
 
 trait AsyncActionFunctions {
 
-  def fromFuture[A](start: () => Future[A])(implicit ec: ExecutionContext): AsyncAction[Throwable, A] =
+  def asyncF[A](start: () => Future[A])(implicit ec: ExecutionContext): AsyncAction[Throwable, A] =
     async[A] { k =>
       start().onComplete {
         case TryFailure(th)     => k(-\/(th))
