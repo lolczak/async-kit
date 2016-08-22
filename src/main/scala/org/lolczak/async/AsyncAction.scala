@@ -4,9 +4,10 @@ import java.util.concurrent.{ExecutorService, ScheduledExecutorService}
 
 import org.lolczak.async.error.ThrowableMapper
 
-import scala.concurrent.{Promise, Future}
 import scala.concurrent.duration.Duration
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.language.implicitConversions
+import scala.util.{Failure => TryFailure, Success => TrySuccess}
 import scalaz._
 import scalaz.concurrent.{Strategy, Task}
 import scalaz.syntax.{ApplicativeOps, BindOps, MonadOps}
@@ -16,6 +17,14 @@ object AsyncAction extends AsyncActionFunctions with ToAsyncActionOps with Async
 }
 
 trait AsyncActionFunctions {
+
+  def fromFuture[A](start: () => Future[A])(implicit ec: ExecutionContext): AsyncAction[Throwable, A] =
+    async[A] { k =>
+      start().onComplete {
+        case TryFailure(th)     => k(-\/(th))
+        case TrySuccess(result) => k(\/-(result))
+      }
+    }
 
   def async[A](register: ((Throwable \/ A) => Unit) => Unit): AsyncAction[Throwable, A] = liftE(Task.async(attachErrorHandling(register)).attempt)
 

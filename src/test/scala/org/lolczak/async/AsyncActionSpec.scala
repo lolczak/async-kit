@@ -3,7 +3,8 @@ package org.lolczak.async
 import org.lolczak.async.error.ThrowableMapper
 import org.scalatest.{Matchers, FlatSpec}
 import AsyncAction._
-import scalaz.{-\/, \/-}
+import scala.concurrent.Future
+import scalaz.{\/-, -\/}
 
 class AsyncActionSpec extends FlatSpec with Matchers {
 
@@ -73,6 +74,15 @@ class AsyncActionSpec extends FlatSpec with Matchers {
   it should "defer block of code" in {
     implicit val thMapper: ThrowableMapper[String] = (th:Throwable) => th.toString
     defer { 1 } executeSync() shouldBe \/-(1)
+  }
+
+  it should "defer future start" in {
+    import scala.concurrent.ExecutionContext.Implicits.global
+    var i = 1
+    val action = fromFuture { () => Future { i=2; i} }
+    i shouldBe 1
+    action.executeSync() shouldBe \/-(2)
+    i shouldBe 2
   }
 
 }
