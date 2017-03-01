@@ -3,7 +3,7 @@ package org.lolczak.async.executor
 import java.util.concurrent.TimeUnit
 
 import org.lolczak.async.Async._
-import org.lolczak.async.Failure
+import org.lolczak.async.TestFailure
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Millis, Span}
 import org.scalatest.{Matchers, FlatSpec}
@@ -30,7 +30,7 @@ class ResilientExecutorSpec extends FlatSpec with Matchers with ScalaFutures {
 
   it should "retry after exponential time" in new TestContext {
     val start = System.currentTimeMillis()
-    val result = objectUnderTest.execute(raiseError(Failure("err"))).futureValue
+    val result = objectUnderTest.execute(raiseError(TestFailure("err"))).futureValue
     val duration = System.currentTimeMillis() - start
     duration should be >= (10l +  20l + 40l)
   }

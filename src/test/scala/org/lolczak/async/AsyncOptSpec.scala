@@ -17,25 +17,25 @@ class AsyncOptSpec extends FlatSpec with Matchers {
 
   it should "map errors" in {
     //when
-    val result = fork { throw new RuntimeException("err") } mapError { case th => Failure(th.getMessage) } executeSync()
+    val result = fork { throw new RuntimeException("err") } mapError { case th => TestFailure(th.getMessage) } executeSync()
     //then
-    result shouldBe -\/(Failure("err"))
+    result shouldBe -\/(TestFailure("err"))
   }
 
   it should "recover errors" in {
     //when
-    val result = raiseError(Failure("err")) recoverWith { case th => return_("OK") } executeSync()
+    val result = raiseError(TestFailure("err")) recoverWith { case th => return_("OK") } executeSync()
     //then
     result shouldBe \/-(Some("OK"))
   }
 
   it should "support filtering" in {
     //given
-    def action(value: Int): AsyncOpt[Failure, String] =
+    def action(value: Int): AsyncOpt[TestFailure, String] =
       for {
-        response <- fork { Some(value) } mapError { case th => Failure(th.getMessage) }
+        response <- fork { Some(value) } mapError { case th => TestFailure(th.getMessage) }
         if response == 5
-        result   <- fork { Some((response * 2).toString) } mapError { case th => Failure(th.getMessage) }
+        result   <- fork { Some((response * 2).toString) } mapError { case th => TestFailure(th.getMessage) }
       } yield result
     //then
     action(5).executeSync() shouldBe \/-(Some("10"))
@@ -44,7 +44,7 @@ class AsyncOptSpec extends FlatSpec with Matchers {
 
   it should "convert action to proper failure" in {
     val action = for {
-      res1 <- delay(1) mapError { case th => Failure(th.getMessage) }
+      res1 <- delay(1) mapError { case th => TestFailure(th.getMessage) }
       res2 <- return_(3)
     } yield res1 + res2
 
@@ -67,10 +67,10 @@ class AsyncOptSpec extends FlatSpec with Matchers {
 
 
   it should "find upper bound for error and success type" in {
-    val action: AsyncOpt[Failure, Unit] = for {
-      res1 <- delay(1) mapError { case th => Failure(th.getMessage) }
-      res2 <- if (res1 == 1) returnSome(()).asAsyncOptAction[Failure]
-              else raiseError[Failure, Unit](Failure("err"))
+    val action: AsyncOpt[TestFailure, Unit] = for {
+      res1 <- delay(1) mapError { case th => TestFailure(th.getMessage) }
+      res2 <- if (res1 == 1) returnSome(()).asAsyncOptAction[TestFailure]
+              else raiseError[TestFailure, Unit](TestFailure("err"))
     } yield res2
 
     action.executeSync() shouldBe \/-(Some())

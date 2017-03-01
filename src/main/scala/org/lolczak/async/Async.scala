@@ -10,7 +10,7 @@ import scala.language.implicitConversions
 import scala.util.{Failure => TryFailure, Success => TrySuccess}
 import scalaz._
 import scalaz.concurrent.{Strategy, Task}
-import scalaz.syntax.{ApplicativeOps, BindOps, MonadOps}
+import scalaz.syntax.{ApplyOps, ApplicativeOps, BindOps, MonadOps}
 
 object Async extends AsyncFunctions with ToAsyncOps with AsyncInstances {
 
@@ -65,16 +65,19 @@ trait AsyncFunctions {
 
 trait ToAsyncOps {
 
-  implicit def toActionBindOps[E, A](action: Async[E, A]): BindOps[Async[E, ?], A] =
-    Async.asyncActionMonad[E].bindSyntax.ToBindOps[A](action)
+  implicit def toBindOps[E, A](action: Async[E, A]): BindOps[Async[E, ?], A] =
+    Async.asyncMonad[E].bindSyntax.ToBindOps[A](action)
 
-  implicit def toActionMonadOps[E, A](action: Async[E, A]): MonadOps[Async[E, ?], A] =
-    Async.asyncActionMonad[E].monadSyntax.ToMonadOps[A](action)
+  implicit def toApplyOps[E, A](action: Async[E, A]): ApplyOps[Async[E, ?], A] =
+    Async.asyncMonad[E].applySyntax.ToApplyOps[A](action)
 
-  implicit def toActionApplicativeOps[E, A](action: Async[E, A]): ApplicativeOps[Async[E, ?], A] =
-    Async.asyncActionMonad[E].applicativeSyntax.ToApplicativeOps[A](action)
+  implicit def toMonadOps[E, A](action: Async[E, A]): MonadOps[Async[E, ?], A] =
+    Async.asyncMonad[E].monadSyntax.ToMonadOps[A](action)
 
-  implicit def toActionUpperBounds[E1, E2 >: E1, A1, A2 >: A1](action: Async[E1, A1]): Async[E2, A2] = action.asInstanceOf[Async[E2, A2]]
+  implicit def toApplicativeOps[E, A](action: Async[E, A]): ApplicativeOps[Async[E, ?], A] =
+    Async.asyncMonad[E].applicativeSyntax.ToApplicativeOps[A](action)
+
+  implicit def toUpperBounds[E1, E2 >: E1, A1, A2 >: A1](action: Async[E1, A1]): Async[E2, A2] = action.asInstanceOf[Async[E2, A2]]
 
   implicit def toActionMt[A](value: => A) = new {
     def asAsyncAction[E]: Async[E, A] = Async.return_(value)
@@ -82,7 +85,7 @@ trait ToAsyncOps {
 
   implicit class ToActionRecoveryOps[E1, A](action: Async[E1, A]) {
 
-    val ME = Async.asyncActionMonadError[E1]
+    val ME = Async.asyncMonadError[E1]
 
     import ME.monadErrorSyntax._
 
@@ -130,10 +133,10 @@ trait ToAsyncOps {
 
 trait AsyncInstances {
 
-  implicit def asyncActionMonad[E] = implicitly[Monad[Async[E, ?]]]
+  implicit def asyncMonad[E] = implicitly[Monad[Async[E, ?]]]
 
-  implicit def asyncActionMonadError[E] = implicitly[MonadError[Async[E, ?], E]]
+  implicit def asyncMonadError[E] = implicitly[MonadError[Async[E, ?], E]]
 
-  implicit def asyncActionMonadTrans[E] = implicitly[MonadTrans[EitherT[?[_], E, ?]]]
+  implicit def asyncMonadTrans[E] = implicitly[MonadTrans[EitherT[?[_], E, ?]]]
 
 }
