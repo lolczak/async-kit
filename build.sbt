@@ -1,4 +1,4 @@
-name := "async"
+name := "async-kit"
 
 organization := "org.lolczak"
 
