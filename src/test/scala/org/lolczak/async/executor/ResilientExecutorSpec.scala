@@ -2,7 +2,7 @@ package org.lolczak.async.executor
 
 import java.util.concurrent.TimeUnit
 
-import org.lolczak.async.AsyncAction._
+import org.lolczak.async.Async._
 import org.lolczak.async.Failure
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Millis, Span}

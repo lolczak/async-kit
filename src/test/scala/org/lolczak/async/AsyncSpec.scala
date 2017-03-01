@@ -2,11 +2,11 @@ package org.lolczak.async
 
 import org.lolczak.async.error.ThrowableMapper
 import org.scalatest.{Matchers, FlatSpec}
-import AsyncAction._
+import Async._
 import scala.concurrent.Future
 import scalaz.{\/-, -\/}
 
-class AsyncActionSpec extends FlatSpec with Matchers {
+class AsyncSpec extends FlatSpec with Matchers {
 
   "Async action" should "fork block of code" in {
     //when
@@ -43,7 +43,7 @@ class AsyncActionSpec extends FlatSpec with Matchers {
     case object Err1 extends Err
     case object Err2 extends Err
 
-    val action: AsyncAction[Err , Int] =
+    val action: Async[Err , Int] =
       for {
         res1 <- delay(1) mapError[Err] { case th => Err1}
         res2 <- delay(1) mapError { case th => Err2}
@@ -53,7 +53,7 @@ class AsyncActionSpec extends FlatSpec with Matchers {
   }
 
   it should "find upper bound for error and success type" in {
-    val action: AsyncAction[Failure, Unit] = for {
+    val action: Async[Failure, Unit] = for {
       res1 <- delay(1) mapError { case th => Failure(th.getMessage) }
       res2 <- if (res1 == 1) return_()
               else raiseError(Failure("err"))

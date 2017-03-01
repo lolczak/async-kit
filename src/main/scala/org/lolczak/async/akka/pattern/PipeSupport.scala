@@ -3,7 +3,7 @@ package org.lolczak.async.akka.pattern
 import _root_.akka.actor.Actor
 import _root_.akka.actor.ActorRef
 import _root_.akka.actor.Status
-import org.lolczak.async.AsyncAction
+import org.lolczak.async.Async
 
 import scala.concurrent.ExecutionContext
 import scalaz.{-\/, \/-}
@@ -20,7 +20,7 @@ trait PipeSupport {
     }
   }
 
-  final class PipeableAction[E, T](val action: AsyncAction[E, T])(implicit executionContext: ExecutionContext) {
+  final class PipeableAction[E, T](val action: Async[E, T])(implicit executionContext: ExecutionContext) {
     def pipeTo(recipient: ActorRef)(implicit sender: ActorRef = Actor.noSender): Unit = {
       action.run.unsafePerformAsync {
         case -\/(f) => recipient ! Status.Failure(f)
@@ -31,6 +31,6 @@ trait PipeSupport {
 
   implicit def pipe[T](future: Task[T])(implicit executionContext: ExecutionContext): PipeableTask[T] = new PipeableTask(future)
 
-  implicit def pipe[E, T](action: AsyncAction[E, T])(implicit executionContext: ExecutionContext): PipeableAction[E, T] = new PipeableAction[E, T](action)
+  implicit def pipe[E, T](action: Async[E, T])(implicit executionContext: ExecutionContext): PipeableAction[E, T] = new PipeableAction[E, T](action)
 
 }

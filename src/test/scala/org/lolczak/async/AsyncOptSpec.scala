@@ -1,12 +1,12 @@
 package org.lolczak.async
 
-import org.lolczak.async.AsyncOptAction._
+import org.lolczak.async.AsyncOpt._
 import org.lolczak.async.error.ThrowableMapper
 import org.scalatest.{FlatSpec, Matchers}
 
 import scalaz.{-\/, \/-}
 
-class AsyncOptActionSpec extends FlatSpec with Matchers {
+class AsyncOptSpec extends FlatSpec with Matchers {
 
   "Async action" should "fork block of code" in {
     //when
@@ -31,7 +31,7 @@ class AsyncOptActionSpec extends FlatSpec with Matchers {
 
   it should "support filtering" in {
     //given
-    def action(value: Int): AsyncOptAction[Failure, String] =
+    def action(value: Int): AsyncOpt[Failure, String] =
       for {
         response <- fork { Some(value) } mapError { case th => Failure(th.getMessage) }
         if response == 5
@@ -56,7 +56,7 @@ class AsyncOptActionSpec extends FlatSpec with Matchers {
     case object Err1 extends Err
     case object Err2 extends Err
 
-    val action: AsyncOptAction[Err , Int] =
+    val action: AsyncOpt[Err , Int] =
       for {
         res1 <- delay(1) mapError[Err] { case th => Err1}
         res2 <- delay(1) mapError { case th => Err2}
@@ -67,7 +67,7 @@ class AsyncOptActionSpec extends FlatSpec with Matchers {
 
 
   it should "find upper bound for error and success type" in {
-    val action: AsyncOptAction[Failure, Unit] = for {
+    val action: AsyncOpt[Failure, Unit] = for {
       res1 <- delay(1) mapError { case th => Failure(th.getMessage) }
       res2 <- if (res1 == 1) returnSome(()).asAsyncOptAction[Failure]
               else raiseError[Failure, Unit](Failure("err"))

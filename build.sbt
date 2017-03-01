@@ -2,7 +2,7 @@ name := "async"
 
 organization := "org.lolczak"
 
-version := "0.4.0"
+version := "0.5.0-SNAPSHOT"
 
 scalaVersion := "2.11.7"
 
