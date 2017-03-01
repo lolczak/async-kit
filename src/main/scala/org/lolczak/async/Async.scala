@@ -112,7 +112,7 @@ trait ToAsyncOps {
     }
   }
 
-  implicit class ToActionOps[E, A](action: Async[E, A]) {
+  implicit class ToAsyncExecOps[E, A](action: Async[E, A]) {
 
     def execute(): Future[E \/ A] = {
       val promise = Promise[E \/ A]()

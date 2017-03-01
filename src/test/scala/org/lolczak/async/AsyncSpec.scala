@@ -9,7 +9,6 @@ import scalaz.{-\/, \/-, _}
 
 class AsyncSpec extends WordSpec with Matchers {
 
-
   "Async" should {
     "fork block of code" in {
       //when

@@ -9,16 +9,16 @@ import scala.concurrent.duration.Duration
 import scala.language.implicitConversions
 import scalaz._
 import scalaz.concurrent.{Strategy, Task}
-import scalaz.syntax.{ApplicativeOps, MonadOps, BindOps}
+import scalaz.syntax.{ApplyOps, ApplicativeOps, MonadOps, BindOps}
 import scala.util.{Failure => TryFailure, Success => TrySuccess}
 
-object AsyncOpt extends AsyncOptFunctions with ToAsyncOptOps with AsyncOptInstances {
+object AsyncOpt extends AsyncOptFunctions with AsyncOptInstances {
 
 }
 
-trait AsyncOptFunctions {
+trait AsyncOptFunctions extends ToAsyncOptOps {
 
-  def asyncF[A](start: () => Future[A])(implicit ec: ExecutionContext): AsyncOpt[Throwable, A] =
+  def spawn[A](start: () => Future[A])(implicit ec: ExecutionContext): AsyncOpt[Exception, A] =
     async[A] { k =>
       start().onComplete {
         case TryFailure(th)     => k(-\/(th))
@@ -26,9 +26,9 @@ trait AsyncOptFunctions {
       }
     }
 
-  def async[A](register: ((Throwable \/ A) => Unit) => Unit): AsyncOpt[Throwable, A] = liftE(Task.async(attachErrorHandling(register)).attempt)
+  def async[A](register: ((Throwable \/ A) => Unit) => Unit): AsyncOpt[Exception, A] = liftE(Task.async(attachErrorHandling(register)).attempt) mapError ThrowableHandler
 
-  def asyncOptF[A](start: () => Future[Option[A]])(implicit ec: ExecutionContext): AsyncOpt[Throwable, A] =
+  def spawnOpt[A](start: () => Future[Option[A]])(implicit ec: ExecutionContext): AsyncOpt[Exception, A] =
     asyncOpt[A] { k =>
       start().onComplete {
         case TryFailure(th)     => k(-\/(th))
@@ -36,25 +36,25 @@ trait AsyncOptFunctions {
       }
     }
 
-  def asyncOpt[A](register: ((Throwable \/ Option[A]) => Unit) => Unit): AsyncOpt[Throwable, A] =
-    OptionT[EitherT[Task, Throwable, ?], A](EitherT.eitherT(Task.async(attachErrorHandling(register)).attempt))
+  def asyncOpt[A](register: ((Throwable \/ Option[A]) => Unit) => Unit): AsyncOpt[Exception, A] =
+    OptionT[EitherT[Task, Throwable, ?], A](EitherT.eitherT(Task.async(attachErrorHandling(register)).attempt)) mapError ThrowableHandler
 
-  def delay[A](a: => A): AsyncOpt[Throwable, A] = lift(Task.delay(a))
+  def delay[A](a: => A): AsyncOpt[Exception, A] = lift(Task.delay(a))
 
   def defer[E, A](a: => A)(implicit throwableMapper: ThrowableMapper[E]): AsyncOpt[E, A] = OptionT[EitherT[Task, E, ?], A](delay(a).run leftMap throwableMapper.mapThrowable)
 
-  def fork[A](task: => Option[A])(implicit pool: ExecutorService = Strategy.DefaultExecutorService): AsyncOpt[Throwable, A] =
-    OptionT[EitherT[Task, Throwable, ?], A](EitherT.eitherT(Task { task } attempt))
+  def fork[A](task: => Option[A])(implicit pool: ExecutorService = Strategy.DefaultExecutorService): AsyncOpt[Exception, A] =
+    OptionT[EitherT[Task, Throwable, ?], A](EitherT.eitherT(Task { task } attempt)) mapError ThrowableHandler
 
   def schedule[A](task: => Option[A])(implicit pool: ScheduledExecutorService = Strategy.DefaultTimeoutScheduler) = new {
-    def after(delay: Duration): AsyncOpt[Throwable, A] = OptionT[EitherT[Task, Throwable, ?], A](EitherT.eitherT(Task.schedule(task, delay).attempt))
+    def after(delay: Duration): AsyncOpt[Exception, A] = OptionT[EitherT[Task, Throwable, ?], A](EitherT.eitherT(Task.schedule(task, delay).attempt)) mapError ThrowableHandler
   }
 
-  def lift[A](task: Task[A]): AsyncOpt[Throwable, A] =
-    AsyncOpt.asyncOptActionMonadTrans.liftM[EitherT[Task, Throwable, ?], A](EitherT.eitherT(task.attempt))
+  def lift[A](task: Task[A]): AsyncOpt[Exception, A] =
+    AsyncOpt.asyncOptMonadTrans.liftM[EitherT[Task, Throwable, ?], A](EitherT.eitherT(task.attempt)) mapError ThrowableHandler
 
   def liftE[B, A](task: Task[B \/ A]): AsyncOpt[B, A] =
-    AsyncOpt.asyncOptActionMonadTrans.liftM[EitherT[Task, B, ?], A](EitherT.eitherT(task))
+    AsyncOpt.asyncOptMonadTrans.liftM[EitherT[Task, B, ?], A](EitherT.eitherT(task))
 
   def return_[A](value: => A): AsyncOpt[Nothing, A] = returnSome[A](value)
 
@@ -62,7 +62,7 @@ trait AsyncOptFunctions {
 
   def returnNone[A]: AsyncOpt[Nothing, A] = OptionT.none[EitherT[Task, Nothing, ?], A]
 
-  def returnFromTryCatch[A](value: => A): AsyncOpt[Throwable, A] = liftE(Task.delay(value).attempt)
+  def returnFromTryCatch[A](value: => A): AsyncOpt[Exception, A] = liftE(Task.delay(value).attempt) mapError ThrowableHandler
 
   def raiseError[E, A](e: E): AsyncOpt[E, A] = OptionT.optionTMonadError[EitherT[Task, E, ?], E].raiseError(e)
 
@@ -78,24 +78,27 @@ trait AsyncOptFunctions {
 
 trait ToAsyncOptOps {
 
-  implicit def toOptActionBindOps[E, A](action: AsyncOpt[E, A]): BindOps[AsyncOpt[E, ?], A] =
-    AsyncOpt.asyncOptActionMonad[E].bindSyntax.ToBindOps[A](action)
+  implicit def toOptBindOps[E, A](action: AsyncOpt[E, A]): BindOps[AsyncOpt[E, ?], A] =
+    AsyncOpt.asyncOptMonad[E].bindSyntax.ToBindOps[A](action)
 
-  implicit def toOptActionMonadOps[E, A](action: AsyncOpt[E, A]): MonadOps[AsyncOpt[E, ?], A] =
-    AsyncOpt.asyncOptActionMonad[E].monadSyntax.ToMonadOps[A](action)
+  implicit def toOptApplyOps[E, A](action: AsyncOpt[E, A]): ApplyOps[AsyncOpt[E, ?], A] =
+    AsyncOpt.asyncOptMonad[E].applySyntax.ToApplyOps[A](action)
 
-  implicit def toOptActionApplicativeOps[E, A](action: AsyncOpt[E, A]): ApplicativeOps[AsyncOpt[E, ?], A] =
-    AsyncOpt.asyncOptActionMonad[E].applicativeSyntax.ToApplicativeOps[A](action)
+  implicit def toOptMonadOps[E, A](action: AsyncOpt[E, A]): MonadOps[AsyncOpt[E, ?], A] =
+    AsyncOpt.asyncOptMonad[E].monadSyntax.ToMonadOps[A](action)
 
-  implicit def toOptActionUpperBound[E1, E2 >: E1, A1, A2 >: A1](action: AsyncOpt[E1, A1]): AsyncOpt[E2, A2] = action.asInstanceOf[AsyncOpt[E2, A2]]
+  implicit def toOptApplicativeOps[E, A](action: AsyncOpt[E, A]): ApplicativeOps[AsyncOpt[E, ?], A] =
+    AsyncOpt.asyncOptMonad[E].applicativeSyntax.ToApplicativeOps[A](action)
 
-  implicit def toOptActionMt[A](value: => A) = new {
-    def asAsyncOptAction[E]: AsyncOpt[E, A] = AsyncOpt.returnSome(value)
+  implicit def toOptUpperBound[E1, E2 >: E1, A1, A2 >: A1](action: AsyncOpt[E1, A1]): AsyncOpt[E2, A2] = action.asInstanceOf[AsyncOpt[E2, A2]]
+
+  implicit def toOptMt[A](value: => A) = new {
+    def asAsyncOpt[E]: AsyncOpt[E, A] = AsyncOpt.returnSome(value)
   }
 
-  implicit class ToOptActionRecoveryOps[E1, A](action: AsyncOpt[E1, A]) {
+  implicit class ToOptRecoveryOps[E1, A](action: AsyncOpt[E1, A]) {
 
-    val ME = AsyncOpt.asyncOptActionMonadError[E1]
+    val ME = AsyncOpt.asyncOptMonadError[E1]
     import ME.monadErrorSyntax._
 
     def mapError[E2](handler: E1 => E2): AsyncOpt[E2, A] = OptionT[EitherT[Task, E2, ?], A](action.run leftMap handler)
@@ -116,7 +119,7 @@ trait ToAsyncOptOps {
 
   }
 
-  implicit class ToOptActionOps[E, A](action: AsyncOpt[E, A]) {
+  implicit class ToAsyncOptExecOps[E, A](action: AsyncOpt[E, A]) {
 
     def execute(): Future[E \/ Option[A]] = {
       val promise = Promise[E \/ Option[A]]()
@@ -135,12 +138,16 @@ trait ToAsyncOptOps {
 
 }
 
-trait AsyncOptInstances {
+trait AsyncOptInstances extends LowPrioImplicitInstances {
 
-  implicit def asyncOptActionMonad[E] = OptionT.optionTMonadPlus[EitherT[Task, E, ?]]
+  implicit def asyncOptMonad[E] = OptionT.optionTMonadPlus[EitherT[Task, E, ?]]
 
-  implicit val asyncOptActionMonadTrans: MonadTrans[OptionT] = OptionT.optionTMonadTrans
+  implicit val asyncOptMonadTrans: MonadTrans[OptionT] = OptionT.optionTMonadTrans
 
-  implicit def asyncOptActionMonadError[E] = OptionT.optionTMonadError[EitherT[Task, E, ?], E]
+}
+
+trait LowPrioImplicitInstances {
+
+  implicit def asyncOptMonadError[E] = OptionT.optionTMonadError[EitherT[Task, E, ?], E]
 
 }
