@@ -2,7 +2,7 @@ package org.lolczak.async
 
 import java.util.concurrent.{ExecutorService, ScheduledExecutorService}
 
-import org.lolczak.async.error.ThrowableMapper
+import org.lolczak.async.error.{ThrowableHandler, ThrowableMapper}
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -18,7 +18,7 @@ object Async extends AsyncFunctions with ToAsyncOps with AsyncInstances {
 
 trait AsyncFunctions {
 
-  def asyncF[A](start: () => Future[A])(implicit ec: ExecutionContext): Async[Throwable, A] =
+  def spawn[A](start: () => Future[A])(implicit ec: ExecutionContext): Async[Exception, A] =
     async[A] { k =>
       start().onComplete {
         case TryFailure(th)     => k(-\/(th))
@@ -26,20 +26,20 @@ trait AsyncFunctions {
       }
     }
 
-  def async[A](register: ((Throwable \/ A) => Unit) => Unit): Async[Throwable, A] = liftE(Task.async(attachErrorHandling(register)).attempt)
+  def async[A](register: ((Throwable \/ A) => Unit) => Unit): Async[Exception, A] = liftE(Task.async(attachErrorHandling(register)).attempt) leftMap ThrowableHandler
 
-  def delay[A](a: => A): Async[Throwable, A] = lift(Task.delay(a))
+  def delay[A](a: => A): Async[Exception, A] = lift(Task.delay(a))
 
   def defer[E, A](a: => A)(implicit throwableMapper: ThrowableMapper[E]): Async[E, A] = delay(a) leftMap throwableMapper.mapThrowable
 
-  def fork[A](task: => A)(implicit pool: ExecutorService = Strategy.DefaultExecutorService): Async[Throwable, A] =
+  def fork[A](task: => A)(implicit pool: ExecutorService = Strategy.DefaultExecutorService): Async[Exception, A] =
     lift(Task { task })
 
   def schedule[A](task: => A)(implicit pool: ScheduledExecutorService = Strategy.DefaultTimeoutScheduler) = new {
-    def after(delay: Duration): Async[Throwable, A] = lift(Task.schedule(task, delay))
+    def after(delay: Duration): Async[Exception, A] = lift(Task.schedule(task, delay))
   }
 
-  def lift[A](task: Task[A]): Async[Throwable, A] = EitherT.eitherT(task.attempt)
+  def lift[A](task: Task[A]): Async[Exception, A] = EitherT.eitherT(task.attempt) leftMap ThrowableHandler
 
   def liftE[B, A](task: Task[B \/ A]): Async[B, A] = EitherT.eitherT(task)
 
@@ -47,9 +47,9 @@ trait AsyncFunctions {
 
   def returnOpt[A](value: => A)(implicit MT: MonadTrans[EitherT[?[_], Nothing, ?]]): Async[Nothing, Option[A]] = MT.liftM(Task.delay(Option(value)))
 
-  def returnOptFromTryCatch[A](value: => A): Async[Throwable, Option[A]] = EitherT.eitherT(Task.delay(Option(value)).attempt)
+  def returnOptFromTryCatch[A](value: => A): Async[Exception, Option[A]] = EitherT.eitherT(Task.delay(Option(value)).attempt) leftMap ThrowableHandler
 
-  def returnFromTryCatch[A](value: => A): Async[Throwable, A] = EitherT.eitherT(Task.delay(value).attempt)
+  def returnFromTryCatch[A](value: => A): Async[Exception, A] = EitherT.eitherT(Task.delay(value).attempt) leftMap ThrowableHandler
 
   def raiseError[E, A](e: E)(implicit ME: MonadError[EitherT[Task, E, ?], E]): Async[E, A] = ME.raiseError(e)
 
@@ -83,6 +83,7 @@ trait ToAsyncOps {
   implicit class ToActionRecoveryOps[E1, A](action: Async[E1, A]) {
 
     val ME = Async.asyncActionMonadError[E1]
+
     import ME.monadErrorSyntax._
 
     def mapError[E2](handler: E1 => E2): Async[E2, A] = action leftMap handler
@@ -113,7 +114,7 @@ trait ToAsyncOps {
     def execute(): Future[E \/ A] = {
       val promise = Promise[E \/ A]()
       action.run.unsafePerformAsync {
-        case -\/(th)     => promise.failure(th)
+        case -\/(th) => promise.failure(th)
         case \/-(result) => promise.success(result)
       }
       promise.future
