@@ -1,9 +1,9 @@
-package org.lolczak.async.akka.pattern
+package tech.olczak.async.akka.pattern
 
 import _root_.akka.actor.Actor
 import _root_.akka.actor.ActorRef
 import _root_.akka.actor.Status
-import org.lolczak.async.Async
+import tech.olczak.async.Async
 
 import scala.concurrent.ExecutionContext
 import scalaz.{-\/, \/-}

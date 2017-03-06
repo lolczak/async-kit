@@ -1,9 +1,9 @@
-package org.lolczak.async.executor
+package tech.olczak.async.executor
 
 import java.util.concurrent.TimeUnit
 
-import org.lolczak.async.Async._
-import org.lolczak.async.TestFailure
+import tech.olczak.async.Async._
+import tech.olczak.async.TestFailure
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Millis, Span}
 import org.scalatest.{Matchers, FlatSpec}

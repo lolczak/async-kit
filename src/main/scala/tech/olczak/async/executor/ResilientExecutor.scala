@@ -1,12 +1,12 @@
-package org.lolczak.async.executor
+package tech.olczak.async.executor
 
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 
 import com.typesafe.scalalogging.slf4j.LazyLogging
-import org.lolczak.async.Async._
-import org.lolczak.async.error.{EveryErrorMatcher, RecoverableErrorMatcher}
-import org.lolczak.async.executor.ResilientExecutor.MaxRetriesLimit
-import org.lolczak.async.{Async, AsyncOpt}
+import tech.olczak.async.Async._
+import tech.olczak.async.error.{EveryErrorMatcher, RecoverableErrorMatcher}
+import tech.olczak.async.executor.ResilientExecutor.MaxRetriesLimit
+import tech.olczak.async.{Async, AsyncOpt}
 
 import scala.concurrent.{Promise, Future}
 import scala.concurrent.duration.FiniteDuration

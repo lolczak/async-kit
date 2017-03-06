@@ -1,4 +1,4 @@
-package org.lolczak.async
+package tech.olczak.async
 
 import scala.language.implicitConversions
 

@@ -1,4 +1,4 @@
-package org.lolczak.async.executor
+package tech.olczak.async.executor
 
 import scala.concurrent.duration.FiniteDuration
 

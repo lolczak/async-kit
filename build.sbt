@@ -1,6 +1,6 @@
 name := "async-kit"
 
-organization := "org.lolczak"
+organization := "tech.olczak"
 
 version := "0.5.0"
 

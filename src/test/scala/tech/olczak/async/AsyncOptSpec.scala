@@ -1,7 +1,7 @@
-package org.lolczak.async
+package tech.olczak.async
 
-import org.lolczak.async.AsyncOpt._
-import org.lolczak.async.error.ThrowableMapper
+import tech.olczak.async.AsyncOpt._
+import tech.olczak.async.error.ThrowableMapper
 import org.scalatest.{Matchers, WordSpec}
 
 import scalaz.{-\/, \/-}

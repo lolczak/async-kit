@@ -1,8 +1,8 @@
-package org.lolczak.async
+package tech.olczak.async
 
 import java.util.concurrent.{ExecutorService, ScheduledExecutorService}
 
-import org.lolczak.async.error._
+import tech.olczak.async.error._
 
 import scala.concurrent.{ExecutionContext, Promise, Future}
 import scala.concurrent.duration.Duration

@@ -1,7 +1,7 @@
-package org.lolczak.async
+package tech.olczak.async
 
-import org.lolczak.async.Async._
-import org.lolczak.async.error.ThrowableMapper
+import tech.olczak.async.Async._
+import tech.olczak.async.error.ThrowableMapper
 import org.scalatest.{Matchers, WordSpec}
 
 import scala.concurrent.Future

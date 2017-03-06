@@ -1,7 +1,7 @@
-package org.lolczak.async.executor
+package tech.olczak.async.executor
 
-import org.lolczak.async.error.{EveryErrorMatcher, RecoverableErrorMatcher}
-import org.lolczak.async.{AsyncOpt, Async}
+import tech.olczak.async.error.{EveryErrorMatcher, RecoverableErrorMatcher}
+import tech.olczak.async.{AsyncOpt, Async}
 
 import scala.concurrent.Future
 import scalaz.\/

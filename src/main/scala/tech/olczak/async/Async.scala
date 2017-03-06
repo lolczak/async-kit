@@ -1,8 +1,8 @@
-package org.lolczak.async
+package tech.olczak.async
 
 import java.util.concurrent.{ExecutorService, ScheduledExecutorService}
 
-import org.lolczak.async.error.{ThrowableHandler, ThrowableMapper}
+import tech.olczak.async.error.{ThrowableHandler, ThrowableMapper}
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future, Promise}

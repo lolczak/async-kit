@@ -1,4 +1,4 @@
-package org.lolczak
+package tech.olczak
 
 import scala.util.control.NonFatal
 import scalaz.{-\/, \/, OptionT, EitherT}
